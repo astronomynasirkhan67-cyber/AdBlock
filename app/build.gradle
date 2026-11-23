@@ -1,0 +1,48 @@
+plugins { id 'com.android.application' }
+
+// Every GitHub build gets a higher version number, so a new APK always counts as an update.
+def runNo = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
+
+android {
+    namespace 'com.ultron.ai'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.ultron.ai'
+        minSdk 26
+        targetSdk 35
+        versionCode 100 + runNo
+        versionName "0.2.${runNo}"
+        ndk { abiFilters 'arm64-v8a' }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // The brain engine (llama-server) ships as libllama_server.so and is executed from the
+    // native library folder, so the libs must be extracted at install time.
+    packaging {
+        jniLibs { useLegacyPackaging = true }
+    }
+
+    // Fixed signing key: every build is signed the same way, so a new APK installs
+    // over the old one. (Fresh CI runners otherwise create a new random debug key each time.)
+    signingConfigs {
+        debug {
+            storeFile file('../ultron-debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    lint { abortOnError false }
+}
+
+dependencies {
+    // Offline speech recognition (Vosk) - works with no internet once its small model is downloaded.
+    implementation 'com.alphacephei:vosk-android:0.3.75'
+    implementation 'net.java.dev.jna:jna:5.18.1@aar'
+}

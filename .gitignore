@@ -1,0 +1,33 @@
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+
+# Python / PyInstaller
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.spec
+
+# Qwen downloaded checkpoint and generated binaries
+pc-engine/qwen3_5-assembly/model/
+pc-engine/qwen3_5-assembly/build/
+pc-engine/qwen3_5-assembly/.venv/
+pc-engine/qwen3_5-assembly/benchmark-results.json
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# CI-only build folders (brain engine)
+llama.cpp/
+build-android*/
+build-win/
+app/src/main/jniLibs/
+llama-server.exe
