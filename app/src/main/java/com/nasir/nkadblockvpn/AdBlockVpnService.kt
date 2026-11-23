@@ -21,6 +21,7 @@ class AdBlockVpnService : VpnService() {
     private var tun: ParcelFileDescriptor? = null
     private val alive = AtomicBoolean(false)
     companion object {
+        const val ACTION_STOP = "com.nasir.nkadblockvpn.action.STOP"
         @Volatile var running = false
         val blockedCount = AtomicInteger(0)
         private const val DNS_IP = "10.10.10.2"
@@ -33,6 +34,11 @@ class AdBlockVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            shutdownVpn()
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         try {
             createNotification()
             if (running) return START_STICKY
@@ -112,7 +118,7 @@ class AdBlockVpnService : VpnService() {
             try {
                 protect(socket)
                 socket.soTimeout = 2500
-                val addr = InetAddress.getByName("1.1.1.1")
+                val addr = InetAddress.getByName("94.140.14.14")
                 socket.send(DatagramPacket(query, query.size, addr, 53))
                 val data = ByteArray(4096)
                 val p = DatagramPacket(data, data.size)
@@ -177,11 +183,22 @@ class AdBlockVpnService : VpnService() {
     }
     private fun u16(b: ByteArray, i: Int) = ((b[i].toInt() and 255) shl 8) or (b[i+1].toInt() and 255)
 
-    override fun onRevoke() { stopSelf(); super.onRevoke() }
-    override fun onDestroy() {
-        alive.set(false); running = false
+    private fun shutdownVpn() {
+        alive.set(false)
+        running = false
         try { tun?.close() } catch (_: Exception) {}
         tun = null
+        try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Exception) {}
+    }
+
+    override fun onRevoke() {
+        shutdownVpn()
+        stopSelf()
+        super.onRevoke()
+    }
+
+    override fun onDestroy() {
+        shutdownVpn()
         super.onDestroy()
     }
 }

@@ -164,8 +164,9 @@ class MainActivity : Activity() {
 
     private fun toggleProtection() {
         if (AdBlockVpnService.running) {
-            stopService(Intent(this, AdBlockVpnService::class.java))
-            refresh()
+            val stopIntent = Intent(this, AdBlockVpnService::class.java).setAction(AdBlockVpnService.ACTION_STOP)
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(stopIntent) else startService(stopIntent)
+            window.decorView.postDelayed({ refresh() }, 500)
             return
         }
         try {

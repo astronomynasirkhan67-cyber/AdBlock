@@ -1,19 +1,18 @@
-# NK Ad Block VPN
+# NK Ad Block VPN — improved DNS filtering prototype
 
-Professional Android starter app for local VPN-based DNS filtering.
+Android local-VPN DNS filtering app.
 
 - Application ID: `com.nasir.nkadblockvpn`
-- Version: `1.0.1`
-- Launcher branding: custom NK shield mark
-- Android foreground VPN service declares the Android 14+ `specialUse` foreground-service type.
+- Version: 1.0.1
+- Local VPN DNS filtering plus a small built-in domain denylist
+- Uses AdGuard public DNS (`94.140.14.14`) as its upstream resolver
+- Explicit VPN stop action closes the TUN descriptor and removes the foreground notification
+- Android 14+ `specialUse` foreground service declaration
 
-## Build with GitHub Actions
-1. Create a GitHub repository named `NK-Ad-Block-VPN`.
-2. Upload the contents of this project folder to the repository root.
-3. Open **Actions** and run **Build NK Ad Block VPN APK**.
-4. Download `NK-Ad-Block-VPN-debug` from the run's Artifacts section.
+## GitHub Actions
+Upload the contents of this folder to the repository root, commit, then run **Build NK Ad Block VPN APK** in Actions. Download the APK from the workflow Artifacts.
 
-## Important
-This is an early DNS filtering prototype, not a production-certified ad blocker. It filters a small starter domain list and currently handles IPv4 UDP DNS. YouTube video ads and ads served from the same domains as app content cannot reliably be blocked by DNS. IPv6, TCP DNS, DNS-over-HTTPS inside apps, a maintained full blocklist, and robust production packet handling still require engineering and device testing. The VPN runs locally and does not provide anonymity or a remote VPN exit. Only one Android VPN can normally be active at a time.
+## Important limitations
+This is still a prototype. DNS filtering can block domains known to the DNS provider or local denylist, but it cannot reliably remove ads served from the same domains as app content, ads delivered through app-specific encrypted DNS/DoH, cached ads, or every in-app ad SDK. The built-in list is not a comprehensive maintained list. YouTube video ads and many social-media ads may remain. The VPN does not anonymize traffic; it only filters DNS. Only one VPN can normally be active at a time.
 
-The foreground-service manifest and runtime declaration are included to address Android 14+ foreground-service type requirements. If the VPN still stops on a particular device, collect its Logcat error (`NKAdBlockVPN` tag) for diagnosis.
+This code handles IPv4 UDP DNS only. IPv6 DNS, TCP DNS, app-level DoH, and production-grade packet handling are not implemented. Test carefully; if internet access fails, turn protection off and check device logs.
