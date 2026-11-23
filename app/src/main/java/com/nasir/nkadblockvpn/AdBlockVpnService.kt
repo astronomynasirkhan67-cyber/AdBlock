@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.content.pm.ServiceInfo
+import android.util.Log
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.DatagramPacket
@@ -26,13 +28,14 @@ class AdBlockVpnService : VpnService() {
             "doubleclick.net", "googlesyndication.com", "googleadservices.com",
             "adservice.google.com", "adnxs.com", "adform.net", "adsrvr.org",
             "app-measurement.com", "unityads.unity3d.com", "applovin.com",
-            " ironsrc.com".trim(), "adjust.com", "scorecardresearch.com"
+            "ironsrc.com", "adjust.com", "scorecardresearch.com"
         )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        createNotification()
         try {
+            createNotification()
+            if (running) return START_STICKY
             tun = Builder().setSession("NK Ad Block VPN")
                 .addAddress("10.10.10.1", 32)
                 .addDnsServer(DNS_IP)
@@ -42,8 +45,12 @@ class AdBlockVpnService : VpnService() {
             if (tun == null) { stopSelf(); return START_NOT_STICKY }
             alive.set(true); running = true
             thread(name = "NK-DNS-filter") { packetLoop() }
-        } catch (_: Exception) {
-            running = false; stopSelf()
+        } catch (e: Exception) {
+            Log.e("NKAdBlockVPN", "Unable to start local VPN", e)
+            running = false
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
         }
         return START_STICKY
     }
@@ -60,7 +67,11 @@ class AdBlockVpnService : VpnService() {
                 .setContentText("DNS protection is active").setSmallIcon(android.R.drawable.ic_secure).build()
         else Notification.Builder(this).setContentTitle("NK Ad Block VPN")
             .setContentText("DNS protection is active").setSmallIcon(android.R.drawable.ic_secure).build()
-        startForeground(42, n)
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(42, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(42, n)
+        }
     }
 
     private fun packetLoop() {

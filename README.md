@@ -1,31 +1,19 @@
 # NK Ad Block VPN
 
-A native Android local-VPN DNS filtering starter project.
+Professional Android starter app for local VPN-based DNS filtering.
 
-## Project identity
-- App: **NK Ad Block VPN**
 - Application ID: `com.nasir.nkadblockvpn`
-- Version: `1.0.0`
-- Suggested repository URL: `https://github.com/astronomynasirkhan67-cyber/NK-Ad-Block-VPN`
-- Suggested project page URL (after enabling GitHub Pages): `https://astronomynasirkhan67-cyber.github.io/NK-Ad-Block-VPN/`
+- Version: `1.0.1`
+- Launcher branding: custom NK shield mark
+- Android foreground VPN service declares the Android 14+ `specialUse` foreground-service type.
 
-The suggested URLs become real only after you create/publish the repository and enable Pages.
-
-## Build APK on GitHub
+## Build with GitHub Actions
 1. Create a GitHub repository named `NK-Ad-Block-VPN`.
-2. Upload the contents of this ZIP to the repository root (not the ZIP file itself).
-3. Open **Actions** and enable workflows if GitHub asks.
-4. Select **Build NK Ad Block VPN APK** → **Run workflow**.
-5. Open the completed workflow run → **Artifacts** → `NK-Ad-Block-VPN-debug`.
-6. Download and extract the APK.
+2. Upload the contents of this project folder to the repository root.
+3. Open **Actions** and run **Build NK Ad Block VPN APK**.
+4. Download `NK-Ad-Block-VPN-debug` from the run's Artifacts section.
 
-## Local build
-Requires JDK 17 and Gradle 8.9+:
-```bash
-gradle assembleDebug
-```
+## Important
+This is an early DNS filtering prototype, not a production-certified ad blocker. It filters a small starter domain list and currently handles IPv4 UDP DNS. YouTube video ads and ads served from the same domains as app content cannot reliably be blocked by DNS. IPv6, TCP DNS, DNS-over-HTTPS inside apps, a maintained full blocklist, and robust production packet handling still require engineering and device testing. The VPN runs locally and does not provide anonymity or a remote VPN exit. Only one Android VPN can normally be active at a time.
 
-## Important limitations
-This is an early DNS-filtering implementation, not a full commercial ad blocker. It blocks requests matching the small starter domain list. YouTube video ads and ads served from the same domains as app content cannot reliably be removed by DNS blocking. The implementation currently handles IPv4 UDP DNS requests; IPv6, TCP DNS, encrypted DNS/DoH inside apps, advanced DNS packet handling, per-app rules, and a large maintained blocklist are not included yet. Compatibility and battery/network behavior must be tested on real devices before public release.
-
-The VPN is local on-device filtering, not an anonymizing VPN. Android normally permits only one active VPN at a time.
+The foreground-service manifest and runtime declaration are included to address Android 14+ foreground-service type requirements. If the VPN still stops on a particular device, collect its Logcat error (`NKAdBlockVPN` tag) for diagnosis.

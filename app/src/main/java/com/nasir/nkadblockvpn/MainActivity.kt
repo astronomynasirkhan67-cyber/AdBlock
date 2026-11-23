@@ -6,120 +6,224 @@ import android.net.VpnService
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
+import android.view.View
 import android.widget.*
 import android.content.Context
+import android.os.Build
 
 class MainActivity : Activity() {
+    private val bg = Color.rgb(8, 15, 27)
+    private val panel = Color.rgb(17, 31, 48)
+    private val green = Color.rgb(53, 224, 161)
+    private val muted = Color.rgb(158, 176, 195)
     private lateinit var status: TextView
     private lateinit var toggle: Button
     private lateinit var counter: TextView
-    private val prefs by lazy { getSharedPreferences("nk", Context.MODE_PRIVATE) }
+    private lateinit var statusDot: View
+    private var refreshHandler: android.os.Handler? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = Color.rgb(8, 15, 27)
-        window.navigationBarColor = Color.rgb(8, 15, 27)
+        window.statusBarColor = bg
+        window.navigationBarColor = bg
+        if (Build.VERSION.SDK_INT >= 29) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
         buildUi()
         refresh()
     }
 
+    private fun rounded(color: Int, radius: Float = 22f): GradientDrawable =
+        GradientDrawable().apply { setColor(color); cornerRadius = radius * resources.displayMetrics.density }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun text(value: String, size: Float, color: Int, bold: Boolean = false): TextView =
+        TextView(this).apply {
+            text = value; textSize = size; setTextColor(color)
+            if (bold) typeface = Typeface.create("sans-serif", Typeface.BOLD)
+        }
+
     private fun buildUi() {
-        val bg = Color.rgb(8, 15, 27)
-        val panel = Color.rgb(18, 31, 49)
-        val green = Color.rgb(34, 220, 145)
-        val root = LinearLayout(this).apply {
+        val scroll = ScrollView(this).apply { setBackgroundColor(bg); clipToPadding = false }
+        val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 34, 24, 24)
-            setBackgroundColor(bg)
+            setPadding(dp(22), dp(52), dp(22), dp(30))
         }
-        val scroll = ScrollView(this)
-        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val brand = TextView(this).apply {
-            text = "NK  /  PURE INTERNET"
-            textSize = 13f; setTextColor(green); letterSpacing = .16f
-            typeface = Typeface.DEFAULT_BOLD
+
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.nk_logo)
+            background = rounded(panel, 18f)
+            setPadding(dp(7), dp(7), dp(7), dp(7))
         }
-        content.addView(brand)
-        content.addView(TextView(this).apply {
-            text = "Ad Block VPN"; textSize = 30f; setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            setPadding(0, 10, 0, 4)
+        top.addView(logo, LinearLayout.LayoutParams(dp(58), dp(58)))
+        val brand = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(13), 0, 0, 0)
+        }
+        brand.addView(text("NK SECURITY", 12f, green, true))
+        brand.addView(text("PURE INTERNET", 17f, Color.WHITE, true))
+        top.addView(brand)
+        page.addView(top)
+
+        page.addView(text("Ad Block VPN", 31f, Color.WHITE, true).apply {
+            setPadding(0, dp(28), 0, dp(3))
         })
-        content.addView(TextView(this).apply {
-            text = "Network-wide DNS protection"; textSize = 14f
-            setTextColor(Color.LTGRAY)
+        page.addView(text("Network-wide DNS protection", 15f, muted))
+
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            background = rounded(panel, 24f)
+            setPadding(dp(20), dp(25), dp(20), dp(22))
+        }
+        val shield = ImageView(this).apply {
+            setImageResource(R.drawable.nk_logo)
+            background = rounded(Color.rgb(24, 58, 54), 60f)
+            setPadding(dp(13), dp(13), dp(13), dp(13))
+        }
+        hero.addView(shield, LinearLayout.LayoutParams(dp(82), dp(82)))
+        statusDot = View(this).apply { background = rounded(Color.GRAY, 50f) }
+        val statusRow = LinearLayout(this).apply {
+            gravity = Gravity.CENTER; orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(18), 0, dp(5))
+        }
+        statusRow.addView(statusDot, LinearLayout.LayoutParams(dp(9), dp(9)).apply { marginEnd = dp(9) })
+        status = text("PROTECTION OFF", 18f, Color.WHITE, true)
+        statusRow.addView(status)
+        hero.addView(statusRow)
+        hero.addView(text("Your connection is filtered on this device.", 12f, muted).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(19))
         })
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-            setPadding(18, 24, 18, 24); setBackgroundColor(panel)
-        }
-        status = TextView(this).apply {
-            text = "PROTECTION OFF"; textSize = 18f; setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
-        }
         toggle = Button(this).apply {
-            text = "START PROTECTION"; isAllCaps = false
-            setTextColor(bg); setBackgroundColor(green)
-            textSize = 16f; typeface = Typeface.DEFAULT_BOLD
-            setOnClickListener { startProtection() }
+            text = "START PROTECTION"
+            isAllCaps = false
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(bg)
+            background = rounded(green, 16f)
+            minHeight = dp(54)
+            setOnClickListener { toggleProtection() }
         }
-        card.addView(status)
-        card.addView(TextView(this).apply {
-            text = "Your DNS requests are filtered locally on this device."
-            textSize = 12f; setTextColor(Color.LTGRAY); gravity = Gravity.CENTER
-            setPadding(0, 12, 0, 18)
+        hero.addView(toggle, LinearLayout.LayoutParams(-1, dp(56)))
+        page.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(25) })
+
+        val stats = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(Color.rgb(13, 39, 43), 20f)
+            setPadding(dp(18), dp(17), dp(18), dp(17))
+        }
+        stats.addView(text("FILTERING ACTIVITY", 11f, muted, true))
+        counter = text("0", 30f, green, true)
+        stats.addView(counter)
+        stats.addView(text("Blocked DNS requests this session", 12f, muted))
+        page.addView(stats, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+
+        val features = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(panel, 20f)
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+        }
+        features.addView(text("PROTECTION FEATURES", 12f, green, true))
+        listOf(
+            "DNS ad and tracker domain filtering",
+            "On-device VPN — no remote VPN server",
+            "Local processing; traffic is not routed through our server",
+            "Session blocked-request counter"
+        ).forEach { item ->
+            features.addView(text("✓  $item", 13f, Color.rgb(218, 228, 239)).apply {
+                setPadding(0, dp(12), 0, 0)
+            })
+        }
+        page.addView(features, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+
+        val note = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(Color.rgb(38, 34, 24), 18f)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+        }
+        note.addView(text("PLEASE NOTE", 12f, Color.rgb(255, 203, 112), true))
+        note.addView(text(
+            "DNS filtering cannot reliably remove ads delivered from the same domains as app content, including many YouTube video ads. Some apps may show empty ad spaces or have loading issues. Android normally allows only one active VPN at a time.",
+            12f, Color.rgb(226, 216, 196)
+        ).apply { setPadding(0, dp(8), 0, 0) })
+        page.addView(note, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+
+        page.addView(text("NK AD BLOCK VPN  •  VERSION 1.0.1", 10f, muted).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(24), 0, 0)
         })
-        card.addView(toggle, LinearLayout.LayoutParams(-1, -2))
-        content.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 28 })
-        counter = TextView(this).apply {
-            text = "0  domains blocked"; textSize = 18f; setTextColor(green)
-            gravity = Gravity.CENTER; setPadding(0, 26, 0, 10)
-        }
-        content.addView(counter)
-        val info = TextView(this).apply {
-            text = "FEATURES\n• DNS-based ad and tracker filtering\n• Local VPN — no remote VPN server\n• Customizable protection lists\n• Lightweight on-device processing\n\nIMPORTANT\nDNS filtering cannot reliably remove ads served from the same domains as app content (including many YouTube video ads). Some apps may show blank ad spaces or stop loading content. Only one VPN can normally be active at a time."
-            textSize = 14f; setTextColor(Color.rgb(205, 216, 229))
-            setPadding(18, 18, 18, 18); setBackgroundColor(panel)
-        }
-        content.addView(info)
-        content.addView(TextView(this).apply {
-            text = "NK Ad Block VPN  •  Version 1.0.0"
-            textSize = 11f; setTextColor(Color.GRAY); gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 8)
-        })
-        scroll.addView(content)
-        root.addView(scroll)
-        setContentView(root)
+        scroll.addView(page)
+        setContentView(scroll)
     }
 
-    private fun startProtection() {
+    private fun toggleProtection() {
         if (AdBlockVpnService.running) {
             stopService(Intent(this, AdBlockVpnService::class.java))
             refresh()
             return
         }
-        val prepare = VpnService.prepare(this)
-        if (prepare != null) startActivityForResult(prepare, 71)
-        else onActivityResult(71, RESULT_OK, null)
-    }
-
-    @Deprecated("Deprecated by Android; retained for broad device compatibility")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 71 && resultCode == RESULT_OK) {
-            startForegroundService(Intent(this, AdBlockVpnService::class.java))
-            window.decorView.postDelayed({ refresh() }, 700)
+        try {
+            val prepare = VpnService.prepare(this)
+            if (prepare != null) startActivityForResult(prepare, 71)
+            else startVpnService()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not prepare VPN: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
     }
 
-    override fun onResume() { super.onResume(); refresh() }
+    private fun startVpnService() {
+        try {
+            val intent = Intent(this, AdBlockVpnService::class.java)
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
+            window.decorView.postDelayed({ refresh() }, 900)
+        } catch (e: Exception) {
+            Toast.makeText(this, "VPN start failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    @Deprecated("Legacy VPN consent callback")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 71) {
+            if (resultCode == RESULT_OK) startVpnService()
+            else Toast.makeText(this, "VPN permission was not granted", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshHandler = android.os.Handler(mainLooper)
+        refreshHandler?.post(refreshRunnable)
+    }
+
+    override fun onPause() {
+        refreshHandler?.removeCallbacks(refreshRunnable)
+        refreshHandler = null
+        super.onPause()
+    }
+
+    private val refreshRunnable = object : Runnable {
+        override fun run() {
+            refresh()
+            refreshHandler?.postDelayed(this, 1000)
+        }
+    }
 
     private fun refresh() {
         val on = AdBlockVpnService.running
+        if (!::status.isInitialized) return
         status.text = if (on) "PROTECTION ACTIVE" else "PROTECTION OFF"
-        status.setTextColor(if (on) Color.rgb(34,220,145) else Color.WHITE)
+        status.setTextColor(if (on) green else Color.WHITE)
+        statusDot.background = rounded(if (on) green else Color.GRAY, 50f)
         toggle.text = if (on) "STOP PROTECTION" else "START PROTECTION"
-        counter.text = "${AdBlockVpnService.blockedCount}  blocked DNS requests"
+        toggle.background = rounded(if (on) Color.rgb(255, 103, 103) else green, 16f)
+        toggle.setTextColor(if (on) Color.WHITE else bg)
+        counter.text = AdBlockVpnService.blockedCount.get().toString()
     }
 }
